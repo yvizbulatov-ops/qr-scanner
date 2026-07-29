@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>Сканер QR</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Подключаем конфиг с URL сервера -->
+  <script src="config.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -115,8 +117,103 @@
     const resultArea = document.getElementById('resultArea');
     const scannedCode = document.getElementById('scannedCode');
 
-    // URL вашего веб-приложения Google Apps Script
-    const SCRIPT_URL = 'https://script.google.com/macros/s/ВАШ_ID/exec';
+    // Проверяем, что конфиг загрузился
+    if (typeof SCRIPT_URL === 'undefined') {
+      statusEl.textContent = '❌ Ошибка: не загружен config.js';
+      statusEl.style.color = '#ea4335';
+    }
+
+    // ========================================================================
+    // ПАРСИМ QR-КОД (ССЫЛКА НА GOOGLE APPS SCRIPT)
+    // ========================================================================
+
+    function parseQRCode(qrData) {
+      try {
+        // Парсим как URL
+        const url = new URL(qrData);
+        const params = url.searchParams;
+        
+        // Выдёргиваем параметры
+        return {
+          room: params.get('room') || '',
+          place: params.get('place') || '',
+          row: params.get('row') || '',
+          shelf: params.get('shelf') || '',
+          mode: params.get('mode') || ''
+        };
+      } catch (e) {
+        // Если не URL, пробуем просто параметры
+        try {
+          const params = new URLSearchParams(qrData);
+          return {
+            room: params.get('room') || '',
+            place: params.get('place') || '',
+            row: params.get('row') || '',
+            shelf: params.get('shelf') || '',
+            mode: params.get('mode') || ''
+          };
+        } catch (e2) {
+          return null;
+        }
+      }
+    }
+
+    // ========================================================================
+    // ОТПРАВКА НА СЕРВЕР
+    // ========================================================================
+
+    function sendResultToServer(qrData) {
+      // Парсим QR-код
+      const parsed = parseQRCode(qrData);
+      
+      if (!parsed || !parsed.room || !parsed.place || !parsed.row || !parsed.shelf) {
+        statusEl.textContent = '❌ Не найдены параметры room, place, row, shelf';
+        statusEl.style.color = '#ea4335';
+        return;
+      }
+      
+      statusEl.textContent = '⏳ Отправка на сервер...';
+      statusEl.style.color = '#1a73e8';
+      
+      console.log('📤 Отправляем параметры:');
+      console.log('  room:', parsed.room);
+      console.log('  place:', parsed.place);
+      console.log('  row:', parsed.row);
+      console.log('  shelf:', parsed.shelf);
+      
+      // Отправляем параметры на сервер
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'saveScanResult',
+          room: parsed.room,
+          place: parsed.place,
+          row: parsed.row,
+          shelf: parsed.shelf
+        })
+      })
+      .then(function() {
+        statusEl.textContent = '✅ Отправлено! Закрытие...';
+        statusEl.style.color = '#34a853';
+        
+        setTimeout(function() {
+          window.close();
+        }, 1500);
+      })
+      .catch(function(err) {
+        console.error('❌ Ошибка отправки:', err);
+        statusEl.textContent = '❌ Ошибка: ' + err.message;
+        statusEl.style.color = '#ea4335';
+      });
+    }
+
+    // ========================================================================
+    // СКАНЕР
+    // ========================================================================
 
     function showResult(code) {
       lastScannedCode = code;
@@ -130,36 +227,6 @@
           console.error('Ошибка остановки:', err);
         });
       }
-    }
-
-    function sendResultToServer(qrData) {
-      statusEl.textContent = '⏳ Отправка на сервер...';
-      statusEl.style.color = '#1a73e8';
-      
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          action: 'saveScanResult',
-          qrData: qrData
-        })
-      })
-      .then(function() {
-        statusEl.textContent = '✅ Отправлено! Закрытие...';
-        statusEl.style.color = '#34a853';
-        
-        setTimeout(function() {
-          window.close();
-        }, 1500);
-      })
-      .catch(function(err) {
-        console.error('Ошибка отправки:', err);
-        statusEl.textContent = '❌ Ошибка: ' + err.message;
-        statusEl.style.color = '#ea4335';
-      });
     }
 
     function startScanner() {
@@ -208,6 +275,10 @@
       }
     }
 
+    // ========================================================================
+    // ОБРАБОТЧИКИ КНОПОК
+    // ========================================================================
+
     document.getElementById('confirmBtn').addEventListener('click', function() {
       if (lastScannedCode) {
         sendResultToServer(lastScannedCode);
@@ -218,7 +289,18 @@
       startScanner();
     });
 
-    startScanner();
+    // ========================================================================
+    // ЗАПУСК
+    // ========================================================================
+
+    // Проверяем, что конфиг загружен, и запускаем сканер
+    if (typeof SCRIPT_URL !== 'undefined') {
+      console.log('✅ Сервер:', SCRIPT_URL);
+      startScanner();
+    } else {
+      statusEl.textContent = '❌ Ошибка: не загружен config.js';
+      statusEl.style.color = '#ea4335';
+    }
   </script>
 </body>
 </html>
