@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>Сканер QR</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <!-- Подключаем конфиг с URL сервера -->
   <script src="config.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,78 +26,36 @@
       width: 100%;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    h1 {
-      color: #1a73e8;
-      font-size: 24px;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    #reader {
-      width: 100%;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #111;
-      min-height: 300px;
-    }
-    #status {
-      text-align: center;
-      padding: 12px;
-      font-size: 18px;
-      color: #fff;
-      margin-top: 12px;
-      background: rgba(0,0,0,0.7);
-      border-radius: 8px;
-    }
-    .btn {
-      width: 100%;
-      padding: 16px;
-      border: none;
-      border-radius: 12px;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 12px;
-    }
-    .btn-primary {
-      background: #1a73e8;
-      color: white;
-    }
-    .btn-primary:active { background: #1557b0; }
-    .btn-secondary {
-      background: #f1f3f4;
-      color: #3c4043;
-    }
-    .btn-secondary:active { background: #e8eaed; }
-    .btn-success {
-      background: #34a853;
-      color: white;
-    }
+    h1 { color: #1a73e8; font-size: 24px; margin-bottom: 16px; text-align: center; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #111; min-height: 300px; }
+    #status { text-align: center; padding: 12px; font-size: 18px; color: #fff; margin-top: 12px; background: rgba(0,0,0,0.7); border-radius: 8px; }
+    .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 12px; }
+    .btn-success { background: #34a853; color: white; }
     .btn-success:active { background: #2d9249; }
+    .btn-secondary { background: #f1f3f4; color: #3c4043; }
+    .btn-secondary:active { background: #e8eaed; }
     .hidden { display: none !important; }
-    #resultArea {
-      margin-top: 12px;
-      padding: 16px;
-      background: #e6f4ea;
-      border-radius: 12px;
-      text-align: center;
-    }
-    #resultArea .code {
-      font-size: 20px;
-      font-weight: 600;
-      color: #1e7e34;
+    #resultArea { margin-top: 12px; padding: 16px; background: #e6f4ea; border-radius: 12px; text-align: center; }
+    #resultArea .code { font-size: 20px; font-weight: 600; color: #1e7e34; word-break: break-all; }
+    #resultArea .label { font-size: 14px; color: #5f6368; margin-bottom: 4px; }
+    #debug { 
+      margin-top: 12px; 
+      padding: 12px; 
+      background: #1a1a1a; 
+      border-radius: 8px; 
+      font-size: 14px; 
+      color: #0f0; 
+      font-family: monospace;
+      max-height: 150px;
+      overflow-y: auto;
+      white-space: pre-wrap;
       word-break: break-all;
-    }
-    #resultArea .label {
-      font-size: 14px;
-      color: #5f6368;
-      margin-bottom: 4px;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>📸 Сканер QR</h1>
-    
     <div id="reader"></div>
     <div id="status">📷 Наведите камеру на QR-код</div>
     
@@ -108,51 +65,82 @@
       <button class="btn btn-success" id="confirmBtn">✅ Подтвердить и отправить</button>
       <button class="btn btn-secondary" id="rescanBtn">🔄 Сканировать снова</button>
     </div>
+    
+    <!-- Окно отладки -->
+    <div id="debug"></div>
   </div>
 
   <script>
+    // ========================================================================
+    // ОТЛАДКА
+    // ========================================================================
+    
+    function debugLog(msg) {
+      var debugEl = document.getElementById('debug');
+      var time = new Date().toLocaleTimeString();
+      debugEl.textContent += '[' + time + '] ' + msg + '\n';
+      debugEl.scrollTop = debugEl.scrollHeight;
+      console.log(msg);
+    }
+
+    debugLog('🚀 СТРАНИЦА ЗАГРУЖЕНА');
+
+    // Проверяем SCRIPT_URL
+    if (typeof SCRIPT_URL === 'undefined') {
+      debugLog('❌ ОШИБКА: SCRIPT_URL не определен! config.js не загружен');
+      document.getElementById('status').textContent = '❌ Ошибка: не загружен config.js';
+      document.getElementById('status').style.color = '#ea4335';
+    } else {
+      debugLog('✅ SCRIPT_URL загружен: ' + SCRIPT_URL);
+    }
+
+    // ========================================================================
+    // ПЕРЕМЕННЫЕ
+    // ========================================================================
+
     let html5QrCode = null;
     let lastScannedCode = null;
     const statusEl = document.getElementById('status');
     const resultArea = document.getElementById('resultArea');
     const scannedCode = document.getElementById('scannedCode');
 
-    // Проверяем, что конфиг загрузился
-    if (typeof SCRIPT_URL === 'undefined') {
-      statusEl.textContent = '❌ Ошибка: не загружен config.js';
-      statusEl.style.color = '#ea4335';
-    }
-
     // ========================================================================
-    // ПАРСИМ QR-КОД (ССЫЛКА НА GOOGLE APPS SCRIPT)
+    // ПАРСИМ QR-КОД
     // ========================================================================
 
     function parseQRCode(qrData) {
+      debugLog('🔍 Парсим QR: ' + qrData);
+      
       try {
-        // Парсим как URL
         const url = new URL(qrData);
         const params = url.searchParams;
         
-        // Выдёргиваем параметры
-        return {
+        const result = {
           room: params.get('room') || '',
           place: params.get('place') || '',
           row: params.get('row') || '',
           shelf: params.get('shelf') || '',
           mode: params.get('mode') || ''
         };
+        
+        debugLog('✅ Распарсено как URL: ' + JSON.stringify(result));
+        return result;
       } catch (e) {
-        // Если не URL, пробуем просто параметры
+        debugLog('⚠️ Не URL, пробуем как параметры: ' + e.message);
+        
         try {
           const params = new URLSearchParams(qrData);
-          return {
+          const result = {
             room: params.get('room') || '',
             place: params.get('place') || '',
             row: params.get('row') || '',
             shelf: params.get('shelf') || '',
             mode: params.get('mode') || ''
           };
+          debugLog('✅ Распарсено как параметры: ' + JSON.stringify(result));
+          return result;
         } catch (e2) {
+          debugLog('❌ Не удалось распарсить: ' + e2.message);
           return null;
         }
       }
@@ -163,55 +151,67 @@
     // ========================================================================
 
     function sendResultToServer(qrData) {
-  // Парсим QR-код
-  const parsed = parseQRCode(qrData);
-  
-  if (!parsed || !parsed.room || !parsed.place || !parsed.row || !parsed.shelf) {
-    statusEl.textContent = '❌ Не найдены параметры room, place, row, shelf';
-    statusEl.style.color = '#ea4335';
-    return;
-  }
-  
-  statusEl.textContent = '⏳ Отправка на сервер...';
-  statusEl.style.color = '#1a73e8';
-  
-  // Формируем URL с параметрами для GET-запроса
-  const params = new URLSearchParams({
-    action: 'saveScanResult',
-    room: parsed.room,
-    place: parsed.place,
-    row: parsed.row,
-    shelf: parsed.shelf
-  });
-  
-  const url = SCRIPT_URL + '?' + params.toString();
-  console.log('📤 Отправляем GET-запрос:', url);
-  
-  // Используем GET вместо POST
-  fetch(url, {
-    method: 'GET',
-    mode: 'no-cors'
-  })
-  .then(function() {
-    statusEl.textContent = '✅ Отправлено! Закрытие...';
-    statusEl.style.color = '#34a853';
-    
-    setTimeout(function() {
-      window.close();
-    }, 1500);
-  })
-  .catch(function(err) {
-    console.error('❌ Ошибка отправки:', err);
-    statusEl.textContent = '❌ Ошибка: ' + err.message;
-    statusEl.style.color = '#ea4335';
-  });
-}
+      debugLog('📤 sendResultToServer() вызван');
+      debugLog('📤 qrData: ' + qrData);
+      
+      const parsed = parseQRCode(qrData);
+      
+      if (!parsed) {
+        debugLog('❌ parsed = null');
+        statusEl.textContent = '❌ Не удалось распарсить QR-код';
+        statusEl.style.color = '#ea4335';
+        return;
+      }
+      
+      debugLog('📤 Распарсено: room=' + parsed.room + ', place=' + parsed.place + ', row=' + parsed.row + ', shelf=' + parsed.shelf);
+      
+      if (!parsed.room || !parsed.place || !parsed.row || !parsed.shelf) {
+        debugLog('❌ Не все параметры найдены');
+        statusEl.textContent = '❌ Не найдены параметры room, place, row, shelf';
+        statusEl.style.color = '#ea4335';
+        return;
+      }
+      
+      statusEl.textContent = '⏳ Отправка на сервер...';
+      statusEl.style.color = '#1a73e8';
+      
+      const params = new URLSearchParams({
+        action: 'saveScanResult',
+        room: parsed.room,
+        place: parsed.place,
+        row: parsed.row,
+        shelf: parsed.shelf
+      });
+      
+      const url = SCRIPT_URL + '?' + params.toString();
+      debugLog('📤 URL запроса: ' + url);
+      
+      fetch(url, {
+        method: 'GET',
+        mode: 'no-cors'
+      })
+      .then(function() {
+        debugLog('✅ fetch() выполнен (no-cors)');
+        statusEl.textContent = '✅ Отправлено! Закрытие...';
+        statusEl.style.color = '#34a853';
+        
+        setTimeout(function() {
+          window.close();
+        }, 1500);
+      })
+      .catch(function(err) {
+        debugLog('❌ Ошибка fetch: ' + err.message);
+        statusEl.textContent = '❌ Ошибка: ' + err.message;
+        statusEl.style.color = '#ea4335';
+      });
+    }
 
     // ========================================================================
     // СКАНЕР
     // ========================================================================
 
     function showResult(code) {
+      debugLog('📸 showResult() вызван, code: ' + code);
       lastScannedCode = code;
       resultArea.classList.remove('hidden');
       scannedCode.textContent = code;
@@ -220,24 +220,26 @@
       
       if (html5QrCode) {
         html5QrCode.stop().catch(function(err) {
-          console.error('Ошибка остановки:', err);
+          debugLog('⚠️ Ошибка остановки сканера: ' + err.message);
         });
       }
     }
 
     function startScanner() {
+      debugLog('📷 startScanner() вызван');
       resultArea.classList.add('hidden');
       statusEl.textContent = '📷 Наведите камеру на QR-код';
       statusEl.style.color = '#fff';
       
       if (html5QrCode) {
         html5QrCode.clear().catch(function(err) {
-          console.error('Ошибка очистки:', err);
+          debugLog('⚠️ Ошибка очистки сканера: ' + err.message);
         });
         html5QrCode = null;
       }
       
       try {
+        debugLog('📷 Создаем Html5Qrcode...');
         html5QrCode = new Html5Qrcode("reader");
         
         const config = {
@@ -246,11 +248,12 @@
           aspectRatio: 1.0
         };
 
+        debugLog('📷 Запускаем сканер...');
         html5QrCode.start(
           { facingMode: "environment" },
           config,
           function(decodedText) {
-            console.log('✅ QR отсканирован:', decodedText);
+            debugLog('✅ QR отсканирован: ' + decodedText);
             showResult(decodedText);
           },
           function(err) {
@@ -260,28 +263,32 @@
             }
           }
         ).catch(function(err) {
-          console.error('❌ Ошибка запуска:', err);
+          debugLog('❌ Ошибка запуска сканера: ' + err.message);
           statusEl.textContent = '❌ Ошибка: ' + err.message;
           statusEl.style.color = '#ea4335';
         });
       } catch (err) {
-        console.error('❌ Ошибка инициализации:', err);
+        debugLog('❌ Ошибка инициализации сканера: ' + err.message);
         statusEl.textContent = '❌ Ошибка: ' + err.message;
         statusEl.style.color = '#ea4335';
       }
     }
 
     // ========================================================================
-    // ОБРАБОТЧИКИ КНОПОК
+    // ОБРАБОТЧИКИ
     // ========================================================================
 
     document.getElementById('confirmBtn').addEventListener('click', function() {
+      debugLog('🖱️ Нажата кнопка "Подтвердить"');
       if (lastScannedCode) {
         sendResultToServer(lastScannedCode);
+      } else {
+        debugLog('⚠️ lastScannedCode = null');
       }
     });
 
     document.getElementById('rescanBtn').addEventListener('click', function() {
+      debugLog('🔄 Нажата кнопка "Сканировать снова"');
       startScanner();
     });
 
@@ -289,11 +296,11 @@
     // ЗАПУСК
     // ========================================================================
 
-    // Проверяем, что конфиг загружен, и запускаем сканер
     if (typeof SCRIPT_URL !== 'undefined') {
-      console.log('✅ Сервер:', SCRIPT_URL);
+      debugLog('✅ Запускаем сканер...');
       startScanner();
     } else {
+      debugLog('❌ SCRIPT_URL не определен');
       statusEl.textContent = '❌ Ошибка: не загружен config.js';
       statusEl.style.color = '#ea4335';
     }
