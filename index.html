@@ -9,7 +9,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      background: #f5f5f5;
+      background: #000;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -42,8 +42,10 @@
       text-align: center;
       padding: 12px;
       font-size: 18px;
-      color: #5f6368;
+      color: #fff;
       margin-top: 12px;
+      background: rgba(0,0,0,0.7);
+      border-radius: 8px;
     }
     .btn {
       width: 100%;
@@ -70,62 +72,39 @@
       color: white;
     }
     .btn-success:active { background: #2d9249; }
-    .manual-input {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .manual-input input {
-      flex: 1;
-      padding: 14px;
-      border: 2px solid #dadce0;
-      border-radius: 10px;
-      font-size: 18px;
-    }
-    .manual-input input:focus {
-      border-color: #1a73e8;
-      outline: none;
-    }
-    .manual-input button {
-      padding: 14px 24px;
-      background: #34a853;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .manual-input button:active { background: #2d9249; }
     .hidden { display: none !important; }
-    .message {
-      padding: 12px;
-      border-radius: 8px;
+    #resultArea {
       margin-top: 12px;
+      padding: 16px;
+      background: #e6f4ea;
+      border-radius: 12px;
       text-align: center;
-      font-size: 16px;
     }
-    .message-success { background: #e6f4ea; color: #1e7e34; }
-    .message-error { background: #fce8e6; color: #c62828; }
-    .message-info { background: #e8f0fe; color: #1a73e8; }
+    #resultArea .code {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1e7e34;
+      word-break: break-all;
+    }
+    #resultArea .label {
+      font-size: 14px;
+      color: #5f6368;
+      margin-bottom: 4px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>📸 Сканер QR-кода</h1>
+    <h1>📸 Сканер QR</h1>
     
     <div id="reader"></div>
     <div id="status">📷 Наведите камеру на QR-код</div>
     
     <div id="resultArea" class="hidden">
-      <div id="resultMessage" class="message message-success"></div>
+      <div class="label">✅ Найден QR-код:</div>
+      <div class="code" id="scannedCode"></div>
+      <button class="btn btn-success" id="confirmBtn">✅ Подтвердить и отправить</button>
       <button class="btn btn-secondary" id="rescanBtn">🔄 Сканировать снова</button>
-      <button class="btn btn-success" id="confirmBtn">✅ Подтвердить</button>
-    </div>
-    
-    <div class="manual-input">
-      <input id="manualInput" type="text" placeholder="Или введите код вручную..." />
-      <button id="manualSubmit">✅</button>
     </div>
   </div>
 
@@ -134,16 +113,17 @@
     let lastScannedCode = null;
     const statusEl = document.getElementById('status');
     const resultArea = document.getElementById('resultArea');
-    const resultMessage = document.getElementById('resultMessage');
-    const manualInput = document.getElementById('manualInput');
-    const manualSubmit = document.getElementById('manualSubmit');
+    const scannedCode = document.getElementById('scannedCode');
+
+    // URL вашего веб-приложения Google Apps Script
+    const SCRIPT_URL = 'https://script.google.com/macros/s/ВАШ_ID/exec';
 
     function showResult(code) {
       lastScannedCode = code;
       resultArea.classList.remove('hidden');
-      resultMessage.textContent = '✅ QR-код: ' + code;
-      resultMessage.className = 'message message-success';
+      scannedCode.textContent = code;
       statusEl.textContent = '✅ Код найден! Нажмите "Подтвердить"';
+      statusEl.style.color = '#34a853';
       
       // Останавливаем сканер
       if (html5QrCode) {
@@ -153,10 +133,56 @@
       }
     }
 
+    function sendResultToServer(qrData) {
+      // Получаем параметры из URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const room = urlParams.get('room') || '';
+      const place = urlParams.get('place') || '';
+      const row = urlParams.get('row') || '';
+      const shelf = urlParams.get('shelf') || '';
+      const componentName = urlParams.get('component') || '';
+      const quantity = urlParams.get('qty') || '1';
+      
+      statusEl.textContent = '⏳ Отправка на сервер...';
+      statusEl.style.color = '#1a73e8';
+      
+      // Отправляем POST-запрос
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'saveScanResult',
+          qrData: qrData,
+          room: room,
+          place: place,
+          row: row,
+          shelf: shelf,
+          componentName: componentName,
+          quantity: quantity
+        })
+      })
+      .then(function() {
+        statusEl.textContent = '✅ Отправлено! Закрытие...';
+        statusEl.style.color = '#34a853';
+        
+        setTimeout(function() {
+          window.close();
+        }, 1500);
+      })
+      .catch(function(err) {
+        console.error('Ошибка отправки:', err);
+        statusEl.textContent = '❌ Ошибка: ' + err.message;
+        statusEl.style.color = '#ea4335';
+      });
+    }
+
     function startScanner() {
       resultArea.classList.add('hidden');
       statusEl.textContent = '📷 Наведите камеру на QR-код';
-      statusEl.style.color = '#5f6368';
+      statusEl.style.color = '#fff';
       
       if (html5QrCode) {
         html5QrCode.clear().catch(function(err) {
@@ -184,59 +210,31 @@
           function(err) {
             if (err && err.includes('No QR code')) {
               statusEl.textContent = '🔍 Ищем QR-код...';
+              statusEl.style.color = '#fff';
             }
           }
         ).catch(function(err) {
           console.error('❌ Ошибка запуска:', err);
-          statusEl.textContent = '❌ Ошибка доступа к камере: ' + err.message;
-          statusEl.style.color = '#c62828';
+          statusEl.textContent = '❌ Ошибка: ' + err.message;
+          statusEl.style.color = '#ea4335';
         });
       } catch (err) {
         console.error('❌ Ошибка инициализации:', err);
         statusEl.textContent = '❌ Ошибка: ' + err.message;
-        statusEl.style.color = '#c62828';
+        statusEl.style.color = '#ea4335';
       }
     }
+
+    // Кнопка "Подтвердить"
+    document.getElementById('confirmBtn').addEventListener('click', function() {
+      if (lastScannedCode) {
+        sendResultToServer(lastScannedCode);
+      }
+    });
 
     // Кнопка "Сканировать снова"
     document.getElementById('rescanBtn').addEventListener('click', function() {
       startScanner();
-    });
-
-    // Кнопка "Подтвердить" - отправляет результат в основное приложение
-    document.getElementById('confirmBtn').addEventListener('click', function() {
-      if (lastScannedCode) {
-        // Отправляем результат в родительское окно
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage({
-            type: 'QR_SCAN_RESULT',
-            data: lastScannedCode
-          }, '*');
-          window.close();
-        } else {
-          // Если родительское окно закрыто, сохраняем в localStorage
-          localStorage.setItem('qrScanResult', lastScannedCode);
-          alert('QR-код сохранен: ' + lastScannedCode);
-        }
-      }
-    });
-
-    // Ручной ввод
-    manualSubmit.addEventListener('click', function() {
-      const val = manualInput.value.trim();
-      if (val) {
-        showResult(val);
-        manualInput.value = '';
-      } else {
-        statusEl.textContent = '⚠️ Введите код';
-        statusEl.style.color = '#c62828';
-      }
-    });
-
-    manualInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        manualSubmit.click();
-      }
     });
 
     // Запускаем сканер при загрузке
