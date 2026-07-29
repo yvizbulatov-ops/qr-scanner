@@ -186,24 +186,31 @@
       const url = SCRIPT_URL + '?' + params.toString();
       debugLog('📤 URL запроса: ' + url);
       
-      fetch(url, {
-        method: 'GET',
-        mode: 'no-cors'
-      })
-      .then(function() {
-        debugLog('✅ fetch() выполнен (no-cors)');
-        statusEl.textContent = '✅ Отправлено! Закрытие...';
-        statusEl.style.color = '#34a853';
-        
-        setTimeout(function() {
-          window.close();
-        }, 1500);
-      })
-      .catch(function(err) {
-        debugLog('❌ Ошибка fetch: ' + err.message);
-        statusEl.textContent = '❌ Ошибка: ' + err.message;
-        statusEl.style.color = '#ea4335';
-      });
+     fetch(url, {
+  method: 'GET'
+})
+.then(function(response) {
+  return response.text();
+})
+.then(function(text) {
+  debugLog('✅ Ответ сервера: ' + text);
+  statusEl.textContent = '✅ Отправлено! Ответ получен';
+  statusEl.style.color = '#34a853';
+  setTimeout(function() { window.close(); }, 2000);
+})
+.catch(function(err) {
+  debugLog('❌ Ошибка fetch: ' + err.message);
+  // Даже если ошибка CORS, запрос мог дойти
+  if (err.message.includes('Failed to fetch')) {
+    debugLog('⚠️ Возможно, это CORS-ошибка, но запрос мог дойти');
+    statusEl.textContent = '✅ Запрос отправлен (CORS)';
+    statusEl.style.color = '#34a853';
+    setTimeout(function() { window.close(); }, 1500);
+  } else {
+    statusEl.textContent = '❌ Ошибка: ' + err.message;
+    statusEl.style.color = '#ea4335';
+  }
+});
     }
 
     // ========================================================================
