@@ -116,7 +116,7 @@
     const scannedCode = document.getElementById('scannedCode');
 
     // URL вашего веб-приложения Google Apps Script
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw8BeMM8fBotozxjyNIhC5UoI-LY-0mNkeFDInASAZ5/exec';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/ВАШ_ID/exec';
 
     function showResult(code) {
       lastScannedCode = code;
@@ -125,7 +125,6 @@
       statusEl.textContent = '✅ Код найден! Нажмите "Подтвердить"';
       statusEl.style.color = '#34a853';
       
-      // Останавливаем сканер
       if (html5QrCode) {
         html5QrCode.stop().catch(function(err) {
           console.error('Ошибка остановки:', err);
@@ -134,19 +133,9 @@
     }
 
     function sendResultToServer(qrData) {
-      // Получаем параметры из URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const room = urlParams.get('room') || '';
-      const place = urlParams.get('place') || '';
-      const row = urlParams.get('row') || '';
-      const shelf = urlParams.get('shelf') || '';
-      const componentName = urlParams.get('component') || '';
-      const quantity = urlParams.get('qty') || '1';
-      
       statusEl.textContent = '⏳ Отправка на сервер...';
       statusEl.style.color = '#1a73e8';
       
-      // Отправляем POST-запрос
       fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
@@ -155,13 +144,7 @@
         },
         body: new URLSearchParams({
           action: 'saveScanResult',
-          qrData: qrData,
-          room: room,
-          place: place,
-          row: row,
-          shelf: shelf,
-          componentName: componentName,
-          quantity: quantity
+          qrData: qrData
         })
       })
       .then(function() {
@@ -225,19 +208,16 @@
       }
     }
 
-    // Кнопка "Подтвердить"
     document.getElementById('confirmBtn').addEventListener('click', function() {
       if (lastScannedCode) {
         sendResultToServer(lastScannedCode);
       }
     });
 
-    // Кнопка "Сканировать снова"
     document.getElementById('rescanBtn').addEventListener('click', function() {
       startScanner();
     });
 
-    // Запускаем сканер при загрузке
     startScanner();
   </script>
 </body>
