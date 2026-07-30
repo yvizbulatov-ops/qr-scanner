@@ -171,18 +171,8 @@
   const expectedRow = urlParams.get('expectedRow');
   const expectedShelf = urlParams.get('expectedShelf');
   
-  // 3. Проверяем: ТУ ЛИ ячейку отсканировал пользователь?
-  if (parsed.room !== expectedRoom || parsed.place !== expectedPlace || 
-      parsed.row !== expectedRow || parsed.shelf !== expectedShelf) {
-    
-    statusEl.textContent = `❌ Ошибка ячейки! Вы отсканировали: ${parsed.row}${parsed.shelf}, а должны были: ${expectedRow}${expectedShelf}`;
-    statusEl.style.color = '#ea4335';
-    debugLog('❌ Несовпадение ячейки хранения!');
-    return;
-  }
+
   
-  statusEl.textContent = '⏳ Ячейка верна. Списываю компоненты из таблицы...';
-  statusEl.style.color = '#1a73e8';
   
   // 4. Формируем тело запроса для сервера
   const requestBody = {
