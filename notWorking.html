@@ -150,61 +150,79 @@
     // ОТПРАВКА НА СЕРВЕР
     // ========================================================================
 
-    function sendResultToServer(qrData) {
-      debugLog('📤 sendResultToServer() вызван');
-      debugLog('📤 qrData: ' + qrData);
-      
-      const parsed = parseQRCode(qrData);
-      
-      if (!parsed) {
-        debugLog('❌ parsed = null');
-        statusEl.textContent = '❌ Не удалось распарсить QR-код';
-        statusEl.style.color = '#ea4335';
-        return;
-      }
-      
-      debugLog('📤 Распарсено: room=' + parsed.room + ', place=' + parsed.place + ', row=' + parsed.row + ', shelf=' + parsed.shelf);
-      
-      if (!parsed.room || !parsed.place || !parsed.row || !parsed.shelf) {
-        debugLog('❌ Не все параметры найдены');
-        statusEl.textContent = '❌ Не найдены параметры room, place, row, shelf';
-        statusEl.style.color = '#ea4335';
-        return;
-      }
-      
-      statusEl.textContent = '⏳ Отправка на сервер...';
-      statusEl.style.color = '#1a73e8';
-      
-      const params = new URLSearchParams({
-        action: 'saveScanResult',
-        room: parsed.room,
-        place: parsed.place,
-        row: parsed.row,
-        shelf: parsed.shelf
-      });
-      
-      const url = SCRIPT_URL + '?' + params.toString();
-      debugLog('📤 URL запроса: ' + url);
-      console.log(url);
-     
-      fetch(url, {
-    method: "GET",
-    mode: "no-cors"
-})
-.then(r => {
-    debugLog("type = " + r.type);
-    debugLog("status = " + r.status);
-    debugLog("url = " + r.url);
-    debugLog("fetch завершился");
+ async function sendResultToServer(qrData) {
+  debugLog('📤 sendResultToServer() вызван');
+  debugLog('📤 qrData: ' + qrData);
   
-    console.log(r);
-})
-.catch(e => {
-    debugLog(e.toString());
-    console.error(e);
-});
-
+  const parsed = parseQRCode(qrData);
+  
+  if (!parsed) {
+    debugLog('❌ parsed = null');
+    statusEl.textContent = '❌ Не удалось распарсить QR-код';
+    statusEl.style.color = '#ea4335';
+    return;
+  }
+  
+  debugLog('📤 Распарсено: room=' + parsed.room + ', place=' + parsed.place + ', row=' + parsed.row + ', shelf=' + parsed.shelf);
+  
+  if (!parsed.room || !parsed.place || !parsed.row || !parsed.shelf) {
+    debugLog('❌ Не все параметры найдены');
+    statusEl.textContent = '❌ Не найдены параметры room, place, row, shelf';
+    statusEl.style.color = '#ea4335';
+    return;
+  }
+  
+  statusEl.textContent = '⏳ Отправка на сервер...';
+  statusEl.style.color = '#1a73e8';
+  
+  // Формируем JSON-тело для POST запроса
+  const requestBody = {
+    action: 'saveScanResult',
+    room: parsed.room,
+    place: parsed.place,
+    row: parsed.row,
+    shelf: parsed.shelf,
+    qrData: qrData // Передаем и сырую строку на случай, если сервер захочет её сохранить
+  };
+  
+  try {
+    debugLog('📤 Отправка POST запроса на: ' + SCRIPT_URL);
+    
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8' // Обходим CORS preflight OPTIONS
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    debugLog('📤 Статус HTTP: ' + response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    
+    // Получаем JSON ответ от Google Apps Script
+    const data = await response.json();
+    console.log('Ответ сервера:', data);
+    
+    if (data.success) {
+      debugLog('✅ Сервер подтвердил успешное сохранение');
+      statusEl.textContent = '✅ Данные успешно сохранены!';
+      statusEl.style.color = '#1e8e3e';
+    } else {
+      debugLog('⚠️ Сервер обработал запрос, но вернул ошибку: ' + (data.error || data.message));
+      statusEl.textContent = `⚠️ Ошибка сервера: ${data.message || 'Неизвестная ошибка'}`;
+      statusEl.style.color = '#f2994a';
+    }
+    
+  } catch (error) {
+    debugLog('❌ Ошибка fetch: ' + error.toString());
+    console.error(error);
+    statusEl.textContent = `❌ Ошибка сети или сервера: ${error.message}`;
+    statusEl.style.color = '#ea4335';
+  }
+}
 
     // ========================================================================
     // СКАНЕР
