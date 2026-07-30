@@ -192,10 +192,11 @@
     mode: "no-cors"
 })
 .then(r => {
-    debugLog("fetch завершился");
     debugLog("type = " + r.type);
     debugLog("status = " + r.status);
     debugLog("url = " + r.url);
+    debugLog("fetch завершился");
+  
     console.log(r);
 })
 .catch(e => {
