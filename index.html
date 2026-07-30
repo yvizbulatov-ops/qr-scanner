@@ -193,6 +193,9 @@
 })
 .then(r => {
     debugLog("fetch завершился");
+    debugLog("type = " + r.type);
+    debugLog("status = " + r.status);
+    debugLog("url = " + r.url);
     console.log(r);
 })
 .catch(e => {
