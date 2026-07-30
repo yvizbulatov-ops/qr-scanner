@@ -196,12 +196,20 @@
     
     const data = await response.json();
     
-    if (data.success)  statusEl.textContent = `✅ Успешно! Возврат на склад...`;
   
-  setTimeout(() => {
-    // URL вашего веб-приложения Apps Script (оканчивается на /exec)
-    window.top.location.href = 'https://google.com';
-  }, 1200);
+ if (data.success) {
+      statusEl.textContent = `✅ Успешно отсканировано! Закрываю сканер...`;
+      statusEl.style.color = '#1e8e3e';
+      
+      // Если у вас есть функция звука успеха, вызывайте её тут:
+      // if (typeof playSuccessSound === 'function') playSuccessSound();
+      
+      // 🚀 Закрываем вкладку сканера через 1 секунду. Кладовщик сразу окажется в Apps Script
+      setTimeout(() => {
+        window.close();
+      }, 1000);
+      
+    } 
 }
     } else {
       statusEl.textContent = `⚠️ Ошибка таблицы: ${data.message}`;
