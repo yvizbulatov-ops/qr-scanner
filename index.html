@@ -196,16 +196,13 @@
     
     const data = await response.json();
     
-    if (data.success) {
-    statusEl.textContent = `✅ Успешно отсканировано! Закрываю окно...`;
-      statusEl.style.color = '#1e8e3e';
-      
-      // Запускаем звуковой сигнал успеха, если он у вас есть (например, playSuccessSound())
-      
-      // 🚀 Закрываем вкладку сканера автоматически через 1.5 секунды
-      setTimeout(() => {
-        window.close();
-      }, 1500);
+    if (data.success)  statusEl.textContent = `✅ Успешно! Возврат на склад...`;
+  
+  setTimeout(() => {
+    // URL вашего веб-приложения Apps Script (оканчивается на /exec)
+    window.top.location.href = 'https://google.com';
+  }, 1200);
+}
     } else {
       statusEl.textContent = `⚠️ Ошибка таблицы: ${data.message}`;
       statusEl.style.color = '#f2994a';
