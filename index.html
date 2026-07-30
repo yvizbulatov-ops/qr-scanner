@@ -26,7 +26,6 @@
       width: 100%;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    h1 { color: #1a73e8; font-size: 24px; margin-bottom: 16px; text-align: center; }
     #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #111; min-height: 300px; }
     #status { text-align: center; padding: 12px; font-size: 18px; color: #fff; margin-top: 12px; background: rgba(0,0,0,0.7); border-radius: 8px; }
     .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 12px; }
@@ -38,37 +37,17 @@
     #resultArea { margin-top: 12px; padding: 16px; background: #e6f4ea; border-radius: 12px; text-align: center; }
     #resultArea .code { font-size: 20px; font-weight: 600; color: #1e7e34; word-break: break-all; }
     #resultArea .label { font-size: 14px; color: #5f6368; margin-bottom: 4px; }
-    #debug { 
-      margin-top: 12px; 
-      padding: 12px; 
-      background: #1a1a1a; 
-      border-radius: 8px; 
-      font-size: 14px; 
-      color: #0f0; 
-      font-family: monospace;
-      max-height: 150px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-  </style>
+    </style>
 </head>
 <body>
   <div class="container">
-    <h1>📸 Сканер QR</h1>
-    <div id="reader"></div>
+<div id="reader"></div>
     <div id="status">📷 Наведите камеру на QR-код</div>
     
     <div id="resultArea" class="hidden">
-      <div class="label">✅ Найден QR-код:</div>
-      <div class="code" id="scannedCode"></div>
-      <button class="btn btn-success" id="confirmBtn">✅ Подтвердить и отправить</button>
-      <button class="btn btn-secondary" id="rescanBtn">🔄 Сканировать снова</button>
-    </div>
-    
-    <!-- Окно отладки -->
-    <div id="debug"></div>
-  </div>
+<button class="btn btn-success" id="confirmBtn">✅ Подтвердить и отправить</button>
+</div>
+</div>
 
   <script>
     // ========================================================================
@@ -76,10 +55,6 @@
     // ========================================================================
     
     function debugLog(msg) {
-      var debugEl = document.getElementById('debug');
-      var time = new Date().toLocaleTimeString();
-      debugEl.textContent += '[' + time + '] ' + msg + '\n';
-      debugEl.scrollTop = debugEl.scrollHeight;
       console.log(msg);
     }
 
@@ -102,7 +77,7 @@
     let lastScannedCode = null;
     const statusEl = document.getElementById('status');
     const resultArea = document.getElementById('resultArea');
-    const scannedCode = document.getElementById('scannedCode');
+    
 
     // ========================================================================
     // ПАРСИМ QR-КОД
@@ -224,7 +199,7 @@ if (data.success) {
       debugLog('📸 showResult() вызван, code: ' + code);
       lastScannedCode = code;
       resultArea.classList.remove('hidden');
-      scannedCode.textContent = code;
+      
       statusEl.textContent = '✅ Код найден! Нажмите "Подтвердить"';
       statusEl.style.color = '#34a853';
       
@@ -297,11 +272,7 @@ if (data.success) {
       }
     });
 
-    document.getElementById('rescanBtn').addEventListener('click', function() {
-      debugLog('🔄 Нажата кнопка "Сканировать снова"');
-      startScanner();
-    });
-
+    
     // ========================================================================
     // ЗАПУСК
     // ========================================================================
