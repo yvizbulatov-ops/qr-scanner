@@ -197,24 +197,18 @@
     const data = await response.json();
     
   
- if (data.success) {
-      statusEl.textContent = `✅ Успешно отсканировано! Закрываю сканер...`;
-      statusEl.style.color = '#1e8e3e';
-      
-      // Если у вас есть функция звука успеха, вызывайте её тут:
-      // if (typeof playSuccessSound === 'function') playSuccessSound();
-      
-      // 🚀 Закрываем вкладку сканера через 1 секунду. Кладовщик сразу окажется в Apps Script
-      setTimeout(() => {
+if (data.success) {
+    statusEl.textContent = '✅ Успешно отсканировано! Закрываю сканер...';
+    statusEl.style.color = '#1e8e3e';
+
+    setTimeout(() => {
         window.close();
-      }, 1000);
-      
-    } 
+    }, 1000);
+
+} else {
+    statusEl.textContent = `⚠️ Ошибка таблицы: ${data.message}`;
+    statusEl.style.color = '#f2994a';
 }
-    } else {
-      statusEl.textContent = `⚠️ Ошибка таблицы: ${data.message}`;
-      statusEl.style.color = '#f2994a';
-    }
   } catch (error) {
     console.error(error);
     statusEl.textContent = `❌ Ошибка сети: ${error.message}`;
