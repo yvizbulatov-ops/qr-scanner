@@ -93,36 +93,40 @@
                 statusDiv.textContent = '⏳ Отправка запроса...';
                 statusDiv.className = '';
 
-                try {
-                    const response = await fetch(SCRIPT_URL, {
-                        method: 'POST', // или 'GET' — поменяйте при необходимости
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        // Раскомментируйте если нужно отправить данные
-                        // body: JSON.stringify({ key: 'value' }),
-                    });
+           try {
+    // Отправляем пустые/тестовые данные, чтобы просто проверить связь
+    const requestBody = {
+        action: 'saveScanResult',
+        qrData: 'тестовый_запрос_без_данных' 
+    };
 
-                    // Проверяем статус ответа
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
+    const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8", // Обходим CORS
+        },
+        body: JSON.stringify(requestBody)
+    });
 
-                    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-                    statusDiv.textContent = `✅ Успешно! Ответ: ${JSON.stringify(data)}`;
-                    statusDiv.className = 'success';
-                    console.log('Ответ от сервера:', data);
+    const data = await response.json();
 
-                } catch (error) {
-                    statusDiv.textContent = `❌ Ошибка: ${error.message}`;
-                    statusDiv.className = 'error';
-                    console.error('Ошибка запроса:', error);
-                } finally {
-                    // Разблокируем кнопку
-                    button.disabled = false;
-                    button.textContent = 'Отправить запрос';
-                }
+    // Выводим результат на страницу
+    statusDiv.textContent = `✅ Связь есть! Ответ сервера: ${JSON.stringify(data)}`;
+    statusDiv.className = 'success';
+    console.log('Успешный ответ:', data);
+
+} catch (error) {
+    statusDiv.textContent = `❌ Ошибка: ${error.message}`;
+    statusDiv.className = 'error';
+    console.error('Детали ошибки:', error);
+} finally {
+    button.disabled = false;
+    button.textContent = 'Тестировать связь';
+}
             });
 
         })();
