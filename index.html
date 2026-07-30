@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Тестовая страница</title>
+    <script src="config.js"></script>
+    <style>
+        /* Сброс стилей */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Центрирование по вертикали и горизонтали */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+        }
+
+        button {
+            padding: 16px 48px;
+            font-size: 20px;
+            font-weight: 600;
+            color: #ffffff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        #status {
+            margin-top: 24px;
+            font-size: 16px;
+            color: #333;
+            min-height: 24px;
+        }
+
+        .success {
+            color: #28a745;
+        }
+
+        .error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button id="sendBtn">Отправить запрос</button>
+        <div id="status">Готов к отправке</div>
+    </div>
+
+    <script>
+        (function() {
+            const button = document.getElementById('sendBtn');
+            const statusDiv = document.getElementById('status');
+
+            // Проверяем, что SCRIPT_URL определён в config.js
+            if (typeof SCRIPT_URL === 'undefined') {
+                statusDiv.textContent = '❌ Ошибка: SCRIPT_URL не определён в config.js';
+                statusDiv.className = 'error';
+                button.disabled = true;
+                button.style.opacity = '0.5';
+                button.style.cursor = 'not-allowed';
+                return;
+            }
+
+            button.addEventListener('click', async function() {
+                // Блокируем кнопку на время запроса
+                button.disabled = true;
+                button.textContent = 'Отправка...';
+                statusDiv.textContent = '⏳ Отправка запроса...';
+                statusDiv.className = '';
+
+                try {
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST', // или 'GET' — поменяйте при необходимости
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        // Раскомментируйте если нужно отправить данные
+                        // body: JSON.stringify({ key: 'value' }),
+                    });
+
+                    // Проверяем статус ответа
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    statusDiv.textContent = `✅ Успешно! Ответ: ${JSON.stringify(data)}`;
+                    statusDiv.className = 'success';
+                    console.log('Ответ от сервера:', data);
+
+                } catch (error) {
+                    statusDiv.textContent = `❌ Ошибка: ${error.message}`;
+                    statusDiv.className = 'error';
+                    console.error('Ошибка запроса:', error);
+                } finally {
+                    // Разблокируем кнопку
+                    button.disabled = false;
+                    button.textContent = 'Отправить запрос';
+                }
+            });
+
+        })();
+    </script>
+</body>
+</html>
