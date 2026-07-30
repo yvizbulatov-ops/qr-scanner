@@ -152,74 +152,77 @@
 
  async function sendResultToServer(qrData) {
   debugLog('📤 sendResultToServer() вызван');
-  debugLog('📤 qrData: ' + qrData);
   
+  // 1. Распарсиваем отсканированный QR-код ячейки
   const parsed = parseQRCode(qrData);
-  
   if (!parsed) {
-    debugLog('❌ parsed = null');
-    statusEl.textContent = '❌ Не удалось распарсить QR-код';
+    statusEl.textContent = '❌ Не удалось распарсить QR-код ячейки';
     statusEl.style.color = '#ea4335';
     return;
   }
   
-  debugLog('📤 Распарсено: room=' + parsed.room + ', place=' + parsed.place + ', row=' + parsed.row + ', shelf=' + parsed.shelf);
+  // 2. Читаем из URL параметры, которые нам передал Apps Script
+  const urlParams = new URLSearchParams(window.location.search);
+  const action = urlParams.get('action');
+  const component = urlParams.get('component');
+  const qty = urlParams.get('qty');
+  const expectedRoom = urlParams.get('expectedRoom');
+  const expectedPlace = urlParams.get('expectedPlace');
+  const expectedRow = urlParams.get('expectedRow');
+  const expectedShelf = urlParams.get('expectedShelf');
   
-  if (!parsed.room || !parsed.place || !parsed.row || !parsed.shelf) {
-    debugLog('❌ Не все параметры найдены');
-    statusEl.textContent = '❌ Не найдены параметры room, place, row, shelf';
+  // 3. Проверяем: ТУ ЛИ ячейку отсканировал пользователь?
+  if (parsed.room !== expectedRoom || parsed.place !== expectedPlace || 
+      parsed.row !== expectedRow || parsed.shelf !== expectedShelf) {
+    
+    statusEl.textContent = `❌ Ошибка ячейки! Вы отсканировали: ${parsed.row}${parsed.shelf}, а должны были: ${expectedRow}${expectedShelf}`;
     statusEl.style.color = '#ea4335';
+    debugLog('❌ Несовпадение ячейки хранения!');
     return;
   }
   
-  statusEl.textContent = '⏳ Отправка на сервер...';
+  statusEl.textContent = '⏳ Ячейка верна. Списываю компоненты из таблицы...';
   statusEl.style.color = '#1a73e8';
   
-  // Формируем JSON-тело для POST запроса
+  // 4. Формируем тело запроса для сервера
   const requestBody = {
-    action: 'saveScanResult',
+    action: action, // 'confirmWithdrawal'
+    component: component,
+    qty: Number(qty),
     room: parsed.room,
     place: parsed.place,
     row: parsed.row,
-    shelf: parsed.shelf,
-    qrData: qrData // Передаем и сырую строку на случай, если сервер захочет её сохранить
+    shelf: parsed.shelf
   };
   
   try {
-    debugLog('📤 Отправка POST запроса на: ' + SCRIPT_URL);
-    
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8' // Обходим CORS preflight OPTIONS
-      },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(requestBody)
     });
     
-    debugLog('📤 Статус HTTP: ' + response.status);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    // Получаем JSON ответ от Google Apps Script
     const data = await response.json();
-    console.log('Ответ сервера:', data);
     
     if (data.success) {
-      debugLog('✅ Сервер подтвердил успешное сохранение');
-      statusEl.textContent = '✅ Данные успешно сохранены!';
+      statusEl.textContent = `✅ Успешно списано! Перенаправление...`;
       statusEl.style.color = '#1e8e3e';
+      
+      // 5. Автоматически возвращаем пользователя обратно в приложение Apps Script через 2 секунды
+      setTimeout(() => {
+        // Замените на URL вашего веб-приложения Apps Script (которое оканчивается на /exec)
+        window.location.href = 'https://google.com'; 
+      }, 2000);
+      
     } else {
-      debugLog('⚠️ Сервер обработал запрос, но вернул ошибку: ' + (data.error || data.message));
-      statusEl.textContent = `⚠️ Ошибка сервера: ${data.message || 'Неизвестная ошибка'}`;
+      statusEl.textContent = `⚠️ Ошибка таблицы: ${data.message}`;
       statusEl.style.color = '#f2994a';
     }
-    
   } catch (error) {
-    debugLog('❌ Ошибка fetch: ' + error.toString());
     console.error(error);
-    statusEl.textContent = `❌ Ошибка сети или сервера: ${error.message}`;
+    statusEl.textContent = `❌ Ошибка сети: ${error.message}`;
     statusEl.style.color = '#ea4335';
   }
 }
