@@ -185,6 +185,8 @@
       
       const url = SCRIPT_URL + '?' + params.toString();
       debugLog('📤 URL запроса: ' + url);
+      console.log(url);
+     
       fetch(url, {
     method: "GET",
     mode: "no-cors"
