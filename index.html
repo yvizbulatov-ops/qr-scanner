@@ -136,24 +136,21 @@
     return;
   }
   
-  // 2. Читаем из URL параметры, которые нам передал Apps Script
-  const urlParams = new URLSearchParams(window.location.search);
-  const action = urlParams.get('action');
-  const component = urlParams.get('component');
-  const qty = urlParams.get('qty');
-  const expectedRoom = urlParams.get('expectedRoom');
-  const expectedPlace = urlParams.get('expectedPlace');
-  const expectedRow = urlParams.get('expectedRow');
-  const expectedShelf = urlParams.get('expectedShelf');
+  // 🌟 МГНОВЕННЫЙ ОТКЛИК ИНТЕРФЕЙСА:
+  // Блокируем кнопку отправки на Гитхабе, чтобы избежать повторных нажатий
+  const sendBtn = document.getElementById('manualCloseBtn') || document.querySelector('button'); 
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.style.opacity = '0.6';
+    sendBtn.textContent = '⏳ Передача на сервер...';
+  }
   
-
+  statusEl.textContent = '⏳ Секунду, сохраняю скан в кэш Google...';
+  statusEl.style.color = '#1a73e8';
   
-  
-  // 4. Формируем тело запроса для сервера
+  // 2. Формируем тело запроса для сервера
   const requestBody = {
-    action: action, // 'confirmWithdrawal'
-    component: component,
-    qty: Number(qty),
+    action: 'saveScanResult',
     room: parsed.room,
     place: parsed.place,
     row: parsed.row,
@@ -171,25 +168,39 @@
     
     const data = await response.json();
     
-  
-if (data.success) {
-    statusEl.textContent = '✅ Успешно отсканировано! Закрываю сканер...';
-    statusEl.style.color = '#1e8e3e';
-
-    setTimeout(() => {
+    if (data.success) {
+      // 🌟 Информируем, что всё готово, за полсекунды до закрытия
+      statusEl.textContent = `✅ Отсканировано! Закрываю окно...`;
+      statusEl.style.color = '#1e8e3e';
+      if (sendBtn) sendBtn.textContent = '✅ Готово';
+      
+      // Закрываем вкладку сканера через 800 миллисекунд
+      setTimeout(() => {
         window.close();
-    }, 1000);
-
-} else {
-    statusEl.textContent = `⚠️ Ошибка таблицы: ${data.message}`;
-    statusEl.style.color = '#f2994a';
-}
+      }, 800);
+      
+    } else {
+      statusEl.textContent = `⚠️ Ошибка сервера: ${data.message}`;
+      statusEl.style.color = '#f2994a';
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.style.opacity = '1';
+        sendBtn.textContent = 'Отправить повторно';
+      }
+    }
   } catch (error) {
     console.error(error);
     statusEl.textContent = `❌ Ошибка сети: ${error.message}`;
     statusEl.style.color = '#ea4335';
+    // В случае ошибки возвращаем кнопку в рабочее состояние
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.style.opacity = '1';
+      sendBtn.textContent = 'Отправить повторно';
+    }
   }
 }
+
 
     // ========================================================================
     // СКАНЕР
