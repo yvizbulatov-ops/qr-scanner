@@ -197,15 +197,15 @@
     const data = await response.json();
     
     if (data.success) {
-      statusEl.textContent = `✅ Успешно списано! Перенаправление...`;
+    statusEl.textContent = `✅ Успешно отсканировано! Закрываю окно...`;
       statusEl.style.color = '#1e8e3e';
       
-      // 5. Автоматически возвращаем пользователя обратно в приложение Apps Script через 2 секунды
-      setTimeout(() => {
-        // Замените на URL вашего веб-приложения Apps Script (которое оканчивается на /exec)
-        window.location.href = 'https://google.com'; 
-      }, 2000);
+      // Запускаем звуковой сигнал успеха, если он у вас есть (например, playSuccessSound())
       
+      // 🚀 Закрываем вкладку сканера автоматически через 1.5 секунды
+      setTimeout(() => {
+        window.close();
+      }, 1500);
     } else {
       statusEl.textContent = `⚠️ Ошибка таблицы: ${data.message}`;
       statusEl.style.color = '#f2994a';
